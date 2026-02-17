@@ -1,9 +1,7 @@
 // lib/supabaseClient.ts
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+let supabase: any | null = null;
 
-let supabase: SupabaseClient | null = null;
-
-export function getSupabaseClient() {
+export async function getSupabaseClient() {
 	if (supabase) return supabase;
 
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,6 +13,8 @@ export function getSupabaseClient() {
 		);
 	}
 
+	const mod: any = await import("@supabase/supabase-js");
+	const createClient = mod.createClient;
 	supabase = createClient(supabaseUrl, supabaseAnonKey);
 	return supabase;
 }

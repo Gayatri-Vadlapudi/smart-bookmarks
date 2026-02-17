@@ -19,26 +19,36 @@ export default function Home() {
   // Check user on page load
   useEffect(() => {
     async function checkUser() {
-      const supabase = getSupabaseClient();
+      const supabase = await getSupabaseClient();
       const { data } = await supabase.auth.getUser();
       setUser(data.user || null);
       if (data.user) fetchBookmarks(data.user);
     }
 
     checkUser();
-
     // Listen for auth changes
-    const supabaseForListener = getSupabaseClient();
-    const { data: listener } = supabaseForListener.auth.onAuthStateChange(
-      (_event, session) => {
-        const currentUser = session?.user || null;
-        setUser(currentUser);
-        if (currentUser) fetchBookmarks(currentUser);
-        else setBookmarks([]);
-      },
-    );
+    let listenerSub: any = null;
+    let supabaseForListener: any = null;
 
-    return () => listener.subscription.unsubscribe();
+    (async () => {
+      supabaseForListener = await getSupabaseClient();
+      const { data } = supabaseForListener.auth.onAuthStateChange(
+        (_event: any, session: any) => {
+          const currentUser = session?.user || null;
+          setUser(currentUser);
+          if (currentUser) fetchBookmarks(currentUser);
+          else setBookmarks([]);
+        },
+      );
+
+      listenerSub = data?.subscription || null;
+    })();
+
+    return () => {
+      if (listenerSub && supabaseForListener) {
+        listenerSub.unsubscribe();
+      }
+    };
   }, []);
 
   // Fetch bookmarks safely
@@ -46,7 +56,7 @@ export default function Home() {
     const activeUser = currentUser || user;
     if (!activeUser) return;
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("bookmarks")
       .select("*")
@@ -65,32 +75,40 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const supabase = getSupabaseClient();
+    let subscription: any = null;
+    let supabaseForCleanup: any = null;
 
-    const subscription = supabase
-      .channel("public:bookmarks")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookmarks",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchBookmarks();
-        },
-      )
-      .subscribe();
+    (async () => {
+      const supabase = await getSupabaseClient();
+      supabaseForCleanup = supabase;
+
+      subscription = supabase
+        .channel("public:bookmarks")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "bookmarks",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchBookmarks();
+          },
+        )
+        .subscribe();
+    })();
 
     return () => {
-      supabase.removeChannel(subscription);
+      if (subscription && supabaseForCleanup) {
+        supabaseForCleanup.removeChannel(subscription);
+      }
     };
   }, [user]);
 
   // Login with Google
   async function loginWithGoogle() {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
     });
@@ -99,7 +117,7 @@ export default function Home() {
 
   // Logout
   async function logout() {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { error } = await supabase.auth.signOut();
     if (error) console.error("Logout error:", error);
     setUser(null);
@@ -112,7 +130,7 @@ export default function Home() {
     if (!title || !url) return alert("Title and URL are required");
     if (!user) return;
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
 
     const { error } = await supabase.from("bookmarks").insert({
       title,
@@ -132,7 +150,7 @@ export default function Home() {
 
   // Delete bookmark
   async function deleteBookmark(id: string) {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { error } = await supabase.from("bookmarks").delete().eq("id", id);
     if (error) console.error("Error deleting bookmark:", error);
     fetchBookmarks();
