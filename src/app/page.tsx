@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 interface Bookmark {
   id: string;
@@ -19,6 +19,7 @@ export default function Home() {
   // Check user on page load
   useEffect(() => {
     async function checkUser() {
+      const supabase = getSupabaseClient();
       const { data } = await supabase.auth.getUser();
       setUser(data.user || null);
       if (data.user) fetchBookmarks(data.user);
@@ -27,7 +28,8 @@ export default function Home() {
     checkUser();
 
     // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    const supabaseForListener = getSupabaseClient();
+    const { data: listener } = supabaseForListener.auth.onAuthStateChange(
       (_event, session) => {
         const currentUser = session?.user || null;
         setUser(currentUser);
@@ -44,6 +46,7 @@ export default function Home() {
     const activeUser = currentUser || user;
     if (!activeUser) return;
 
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from("bookmarks")
       .select("*")
@@ -61,6 +64,8 @@ export default function Home() {
   // Realtime subscription
   useEffect(() => {
     if (!user) return;
+
+    const supabase = getSupabaseClient();
 
     const subscription = supabase
       .channel("public:bookmarks")
@@ -85,6 +90,7 @@ export default function Home() {
 
   // Login with Google
   async function loginWithGoogle() {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
     });
@@ -93,6 +99,7 @@ export default function Home() {
 
   // Logout
   async function logout() {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.auth.signOut();
     if (error) console.error("Logout error:", error);
     setUser(null);
@@ -104,6 +111,8 @@ export default function Home() {
     e.preventDefault();
     if (!title || !url) return alert("Title and URL are required");
     if (!user) return;
+
+    const supabase = getSupabaseClient();
 
     const { error } = await supabase.from("bookmarks").insert({
       title,
@@ -123,6 +132,7 @@ export default function Home() {
 
   // Delete bookmark
   async function deleteBookmark(id: string) {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.from("bookmarks").delete().eq("id", id);
     if (error) console.error("Error deleting bookmark:", error);
     fetchBookmarks();
