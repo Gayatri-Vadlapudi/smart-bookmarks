@@ -1,9 +1,7 @@
 // lib/supabaseClient.ts
-import { createClient } from "@supabase/supabase-js";
-
 let supabase: any | null = null;
 
-export function getSupabaseClient() {
+export async function getSupabaseClient() {
 	if (supabase) return supabase;
 
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,6 +13,8 @@ export function getSupabaseClient() {
 		);
 	}
 
+	// Use standard dynamic import that webpack can bundle properly
+	const { createClient } = await import("@supabase/supabase-js");
 	supabase = createClient(supabaseUrl, supabaseAnonKey);
 	return supabase;
 }
