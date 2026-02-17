@@ -20,12 +20,17 @@ export default function Home() {
   useEffect(() => {
     async function checkUser() {
       const supabase = await getSupabaseClient();
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user || null);
-      if (data.user) fetchBookmarks(data.user);
+
+      // First, get the current session (this will parse hash from OAuth callback)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+      if (session?.user) fetchBookmarks(session.user);
     }
 
     checkUser();
+
     // Listen for auth changes
     let listenerSub: any = null;
     let supabaseForListener: any = null;
