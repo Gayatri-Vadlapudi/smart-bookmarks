@@ -1,7 +1,9 @@
 // lib/supabaseClient.ts
+import { createClient } from "@supabase/supabase-js";
+
 let supabase: any | null = null;
 
-export async function getSupabaseClient() {
+export function getSupabaseClient() {
 	if (supabase) return supabase;
 
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,13 +15,6 @@ export async function getSupabaseClient() {
 		);
 	}
 
-	// Use runtime import via Function to avoid static bundlers trying to resolve
-	// `@supabase/supabase-js` at build time for SSR paths.
-	// eslint-disable-next-line no-new-func
-	const mod: any = await new Function(
-		`return import("@supabase/supabase-js")`
-	)();
-	const createClient = mod.createClient;
 	supabase = createClient(supabaseUrl, supabaseAnonKey);
 	return supabase;
 }
